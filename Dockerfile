@@ -1,8 +1,33 @@
-FROM maven:3.8.5-openjdk-17 AS Build
-RUN mvn clean package -DskipTests
-ENTRYPOINT ["java","-jar","/app.jar"]
+# Use a base image with JDK
+FROM openjdk:17-jdk-slim AS build
 
-FROM openjdk:17.0.1-jdk-slim
-COPY --from=build /target/demo-0.0.1-SNAPSHOT.jar demo.jar
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the Maven project file
+COPY pom.xml .
+
+# Build the application
+RUN apt-get update && apt-get install -y maven
+RUN mvn dependency:go-offline
+
+# Copy the application source code
+COPY src ./src
+
+# Build the application
+RUN mvn package -DskipTests
+
+# Use a smaller base image for the application
+FROM openjdk:17-jdk-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the packaged JAR file from the build stage to the new image
+COPY --from=build /app/target/demo-*.jar app.jar
+
+# Expose the port the application runs on
 EXPOSE 8080
-ENTRYPOINT ["java","jar","demo.jar"]
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
