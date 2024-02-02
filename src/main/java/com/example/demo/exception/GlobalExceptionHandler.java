@@ -5,11 +5,42 @@ import lombok.Getter;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+
+
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleValidationException(MethodArgumentNotValidException e) {
+        // Get all field errors
+        List<FieldError> fieldErrors = e.getBindingResult().getFieldErrors();
+        // Get all global errors
+        List<ObjectError> globalErrors = e.getBindingResult().getGlobalErrors();
+        // Collect all error messages
+        List<String> errorMessages = new ArrayList<>();
+        for (FieldError fieldError : fieldErrors) {
+            errorMessages.add(fieldError.getField() + ": " + fieldError.getDefaultMessage());
+        }
+        for (ObjectError globalError : globalErrors) {
+            errorMessages.add(globalError.getDefaultMessage());
+        }
+        // Concatenate error messages
+        String errorMessage = "Validation Errors: " + String.join(", ", errorMessages);
+
+        // Return ResponseEntity with 400 Bad Request status and error message
+        return new ResponseEntity<>(errorMessage,HttpStatus.BAD_REQUEST);
+    }
+
 
     @ExceptionHandler(DataAccessResourceFailureException.class)
     public ResponseEntity<ErrorResponse> handleDatabaseConnectionFailure(DataAccessResourceFailureException ex) {
